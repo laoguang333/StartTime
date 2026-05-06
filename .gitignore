@@ -1,0 +1,25 @@
+# .NET build output
+bin/
+obj/
+
+# Visual Studio user settings
+*.user
+.vs/
+
+# Win32 native build artifacts
+Win32Demo/*.obj
+Win32Demo/*.exe
+Win32Demo/*.pdb
+Win32Demo/*.ilk
+
+# Rust build output (all subprojects)
+nwg_demo/target/
+egui_demo/target/
+gpui_demo/target/
+
+# Python cache
+__pycache__/
+
+# OS trash
+Thumbs.db
+.DS_Store
