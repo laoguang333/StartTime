@@ -28,9 +28,14 @@ PROGRAMS = {
     "Rust egui":     ROOT / "egui_demo" / "target" / "release" / "egui_demo.exe",
     ".NET WinForms": ROOT / "bin" / "Release" / "net10.0-windows" / "WinFormDemo.exe",
     "Rust GPUI":     ROOT / "gpui_demo" / "target" / "release" / "gpui_demo.exe",
+    "Rust CLI":      ROOT / "cli_demo" / "target" / "release" / "cli_demo.exe",
 }
 
-TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI) Demo - Startup: (\d+) ms$')
+# Programs that print result to stdout and exit (no window to detect)
+CLI_PROGRAMS = {"Rust CLI"}
+
+TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI|Rust CLI) Demo - Startup: (\d+) ms$')
+CLI_OUTPUT_PATTERN = re.compile(r'^Rust CLI Demo - Startup: (\d+) ms$')
 
 
 def get_window_title(hwnd):
@@ -115,6 +120,47 @@ def run_benchmark(exe_path, runs=5):
     return results
 
 
+def run_benchmark_cli(exe_path, runs=5):
+    if not exe_path.exists():
+        print(f"  [SKIP] 未找到: {exe_path}")
+        return []
+
+    results = []
+    for r in range(1, runs + 1):
+        start_ms = int(time.time() * 1000)
+        try:
+            proc = subprocess.Popen(
+                [str(exe_path), "--start-time", str(start_ms)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+        except Exception as e:
+            print(f"  [ERR] 启动失败: {e}")
+            break
+
+        try:
+            stdout, _ = proc.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+            print(f"  [TIMEOUT] Run {r}")
+            break
+
+        m = CLI_OUTPUT_PATTERN.match(stdout.strip())
+        if m:
+            elapsed = int(m.group(1))
+            results.append(elapsed)
+            print(f"  Run {r}: {elapsed} ms")
+        else:
+            print(f"  [PARSE FAIL] Run {r}: stdout={stdout.strip()!r}")
+            break
+
+        time.sleep(0.5)
+
+    return results
+
+
 def main():
     runs = 5
     selected = list(PROGRAMS.keys())
@@ -146,7 +192,10 @@ def main():
                 continue
 
         print(f"\n=== {name} ===")
-        results = run_benchmark(exe, runs=runs)
+        if name in CLI_PROGRAMS:
+            results = run_benchmark_cli(exe, runs=runs)
+        else:
+            results = run_benchmark(exe, runs=runs)
         if results:
             all_results[name] = results
 

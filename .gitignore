@@ -16,6 +16,7 @@ Win32Demo/*.ilk
 nwg_demo/target/
 egui_demo/target/
 gpui_demo/target/
+cli_demo/target/
 
 # Python cache
 __pycache__/
