@@ -29,13 +29,17 @@ PROGRAMS = {
     ".NET WinForms": ROOT / "bin" / "Release" / "net10.0-windows" / "WinFormDemo.exe",
     "Rust GPUI":     ROOT / "gpui_demo" / "target" / "release" / "gpui_demo.exe",
     "Rust CLI":      ROOT / "cli_demo" / "target" / "release" / "cli_demo.exe",
+    "Python CLI":    ROOT / "py_cli_demo.py",
 }
 
 # Programs that print result to stdout and exit (no window to detect)
-CLI_PROGRAMS = {"Rust CLI"}
+CLI_PROGRAMS = {"Rust CLI", "Python CLI"}
 
-TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI|Rust CLI) Demo - Startup: (\d+) ms$')
-CLI_OUTPUT_PATTERN = re.compile(r'^Rust CLI Demo - Startup: (\d+) ms$')
+# Programs that need to be run via an interpreter (not standalone exe)
+PYTHON_PROGRAMS = {"Python CLI"}
+
+TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI|Rust CLI|Python CLI) Demo - Startup: (\d+) ms$')
+CLI_OUTPUT_PATTERN = re.compile(r'^(Rust CLI|Python CLI) Demo - Startup: (\d+) ms$')
 
 
 def get_window_title(hwnd):
@@ -120,17 +124,22 @@ def run_benchmark(exe_path, runs=5):
     return results
 
 
-def run_benchmark_cli(exe_path, runs=5):
+def run_benchmark_cli(name, exe_path, runs=5):
     if not exe_path.exists():
         print(f"  [SKIP] 未找到: {exe_path}")
         return []
 
     results = []
+    is_python = name in PYTHON_PROGRAMS
     for r in range(1, runs + 1):
         start_ms = int(time.time() * 1000)
         try:
+            if is_python:
+                cmd = [sys.executable, str(exe_path), "--start-time", str(start_ms)]
+            else:
+                cmd = [str(exe_path), "--start-time", str(start_ms)]
             proc = subprocess.Popen(
-                [str(exe_path), "--start-time", str(start_ms)],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 text=True,
@@ -149,7 +158,7 @@ def run_benchmark_cli(exe_path, runs=5):
 
         m = CLI_OUTPUT_PATTERN.match(stdout.strip())
         if m:
-            elapsed = int(m.group(1))
+            elapsed = int(m.group(2))
             results.append(elapsed)
             print(f"  Run {r}: {elapsed} ms")
         else:
@@ -193,7 +202,7 @@ def main():
 
         print(f"\n=== {name} ===")
         if name in CLI_PROGRAMS:
-            results = run_benchmark_cli(exe, runs=runs)
+            results = run_benchmark_cli(name, exe, runs=runs)
         else:
             results = run_benchmark(exe, runs=runs)
         if results:
