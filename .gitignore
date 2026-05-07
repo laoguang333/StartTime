@@ -17,6 +17,7 @@ nwg_demo/target/
 egui_demo/target/
 gpui_demo/target/
 cli_demo/target/
+axum_demo/target/
 
 # Python cache
 __pycache__/

@@ -30,16 +30,20 @@ PROGRAMS = {
     "Rust GPUI":     ROOT / "gpui_demo" / "target" / "release" / "gpui_demo.exe",
     "Rust CLI":      ROOT / "cli_demo" / "target" / "release" / "cli_demo.exe",
     "Python CLI":    ROOT / "py_cli_demo.py",
+    "Rust axum":     ROOT / "axum_demo" / "target" / "release" / "axum_demo.exe",
 }
 
 # Programs that print result to stdout and exit (no window to detect)
-CLI_PROGRAMS = {"Rust CLI", "Python CLI"}
+CLI_PROGRAMS = {"Rust CLI", "Python CLI", "Rust axum"}
 
 # Programs that need to be run via an interpreter (not standalone exe)
 PYTHON_PROGRAMS = {"Python CLI"}
 
-TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI|Rust CLI|Python CLI) Demo - Startup: (\d+) ms$')
-CLI_OUTPUT_PATTERN = re.compile(r'^(Rust CLI|Python CLI) Demo - Startup: (\d+) ms$')
+# Programs that stay running (server) and need to be killed after reading output
+SERVER_PROGRAMS = {"Rust axum"}
+
+TITLE_PATTERN = re.compile(r'^(WinForm|Win32|NWG|egui|GPUI) Demo - Startup: (\d+) ms$')
+CLI_OUTPUT_PATTERN = re.compile(r'^(Rust CLI|Python CLI|axum) Demo - Startup: (\d+) ms$')
 
 
 def get_window_title(hwnd):
@@ -170,6 +174,49 @@ def run_benchmark_cli(name, exe_path, runs=5):
     return results
 
 
+def run_benchmark_server(name, exe_path, runs=5):
+    """For server-type programs that stay running (don't exit on their own)."""
+    if not exe_path.exists():
+        print(f"  [SKIP] 未找到: {exe_path}")
+        return []
+
+    results = []
+    for r in range(1, runs + 1):
+        start_ms = int(time.time() * 1000)
+        try:
+            proc = subprocess.Popen(
+                [str(exe_path), "--start-time", str(start_ms)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+        except Exception as e:
+            print(f"  [ERR] 启动失败: {e}")
+            break
+
+        try:
+            line = proc.stdout.readline()
+            if line:
+                m = CLI_OUTPUT_PATTERN.match(line.strip())
+                if m:
+                    elapsed = int(m.group(2))
+                    results.append(elapsed)
+                    print(f"  Run {r}: {elapsed} ms")
+                else:
+                    print(f"  [PARSE FAIL] Run {r}: stdout={line.strip()!r}")
+                    break
+        except Exception as e:
+            print(f"  [ERR] Run {r}: {e}")
+            break
+        finally:
+            proc.kill()
+            proc.wait(timeout=5)
+
+        time.sleep(0.5)
+
+    return results
+
+
 def main():
     runs = 5
     selected = list(PROGRAMS.keys())
@@ -201,7 +248,9 @@ def main():
                 continue
 
         print(f"\n=== {name} ===")
-        if name in CLI_PROGRAMS:
+        if name in SERVER_PROGRAMS:
+            results = run_benchmark_server(name, exe, runs=runs)
+        elif name in CLI_PROGRAMS:
             results = run_benchmark_cli(name, exe, runs=runs)
         else:
             results = run_benchmark(exe, runs=runs)
