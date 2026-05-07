@@ -84,7 +84,7 @@
 | Rust nwg | 158 KB | **93.2 ms** |
 | Rust egui | 4.7 MB | **182.2 ms** |
 | .NET WinForms | 162 KB | **314.4 ms** |
-| Rust GPUI | **16.9 MB** | **351.2 ms** |
+| Rust GPUI² | **8.3 MB** | **351.2 ms** |
 
 > ¹ Python CLI 为 `.py` 脚本，无独立可执行文件；需依赖系统安装的 `python.exe`
 
@@ -143,7 +143,9 @@
 | Rust nwg | 158 KB | **93.2 ms** | Win32 封装 |
 | Rust egui | 4.7 MB | **182.2 ms** | 即时模式 GUI |
 | .NET WinForms | 162 KB | **314.4 ms** | 托管 GUI |
-| Rust GPUI | **16.9 MB** | **351.2 ms** | GPU 加速 GUI |
+| Rust GPUI² | **8.3 MB** | **351.2 ms** | GPU 加速 GUI |
+
+> ² GPUI 通过 `default-features=false`（去除 wayland/x11）+ `lto=true` + `codegen-units=1` + `strip=true` + `opt-level="z"` 从 16.9 MB 优化至 8.3 MB（-51%）。启动时间不受影响。
 
 ## 基准测试方法变更说明
 
