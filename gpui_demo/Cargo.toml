@@ -4,5 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-gpui = "0.2.2"
+gpui = { version = "0.2.2", default-features = false, features = ["blade-graphics", "font-kit"] }
 gpui-component = "0.5.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"
